@@ -1,0 +1,172 @@
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+
+// 📚 Полный список терминов
+const TERMS = [
+  { la: "Verticalis", tr: "вертікАліс", ua: "Вертикальний, прямовисний" },
+  { la: "Dexter", tr: "дЕкстер", ua: "Правий" },
+  { la: "Sinister", tr: "сІністер", ua: "Лівий" },
+  { la: "Intermedius", tr: "інтермЕдіус", ua: "Проміжний" },
+  { la: "Medius", tr: "мЕдіус", ua: "Середній" },
+  { la: "Medialis", tr: "медіАліс", ua: "Присередній, медіальний" },
+  { la: "Lateralis", tr: "латерАліс", ua: "Бічний, латеральний" },
+  { la: "Anterior", tr: "антЕріор", ua: "Передній" },
+  { la: "Posterior", tr: "постЕріор", ua: "Задній" },
+  { la: "Ventralis", tr: "вентрАліс", ua: "Черевний, вентральний" },
+  { la: "Dorsalis", tr: "дорсАліс", ua: "Спинний, тильний, дорсальний" },
+  { la: "Superior", tr: "супЕріор", ua: "Верхній" },
+  { la: "Inferior", tr: "інфЕріор", ua: "Нижній" },
+  { la: "Cranialis", tr: "краніАліс", ua: "Черепний, краніальний" },
+  { la: "Caudalis", tr: "каудАліс", ua: "Хвостовий, каудальний" },
+  { la: "Internus", tr: "інтЕрнус", ua: "Внутрішній" },
+  { la: "Externus", tr: "екстЕрнус", ua: "Зовнішній" },
+  { la: "Superficialis", tr: "суперфіціАліс", ua: "Поверхневий" },
+  { la: "Profundus", tr: "профУндус", ua: "Глибокий" },
+  { la: "Proximalis", tr: "проксімАліс", ua: "Ближчий, проксимальний" },
+  { la: "Distalis", tr: "дістАліс", ua: "Дальший, кінцевий, дистальний" },
+  { la: "Centralis", tr: "централІс", ua: "Центральний" },
+  { la: "Plana frontalia", tr: "плАна фронтАліа", ua: "Лобові площини" },
+  { la: "Plana horizontalia", tr: "плАна горизонтАліа", ua: "Горизонтальні площини" },
+  { la: "Plana sagittalia", tr: "плАна сагіттАліа", ua: "Стрілові площини" },
+  { la: "Planum medianum", tr: "плАнул медіАнум", ua: "Серединна площина" },
+  { la: "Plana paramediana", tr: "плАна парамедіАна", ua: "Присерединні площини" },
+];
+
+// 🎲 Перемешивание массива
+function shuffle(arr) {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+// 🧩 Очередь карточек
+function useQueue(list) {
+  const [queue, setQueue] = useState(shuffle(list));
+
+  function know() {
+    setQueue((q) => q.slice(1));
+  }
+
+  function dontKnow() {
+    setQueue((q) => {
+      const [first, ...rest] = q;
+      // Чтобы не попадалось одно и то же подряд
+      if (rest.length > 0 && rest[0].la === first.la) {
+        return [...rest.slice(1), rest[0], first];
+      }
+      return [...rest, first];
+    });
+  }
+
+  function reset() {
+    setQueue(shuffle(list));
+  }
+
+  return {
+    current: queue[0],
+    left: queue.length,
+    know,
+    dontKnow,
+    reset,
+    total: list.length,
+  };
+}
+
+// 🎴 Компонент карточки
+function Flashcard({ term, invert }) {
+  const [showAnswer, setShowAnswer] = useState(false);
+
+  return (
+    <motion.div
+      key={term.la}
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="mb-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-lg text-center"
+    >
+      <h2 className="text-2xl font-bold mb-2">
+        {invert ? (showAnswer ? term.la : term.ua) : (showAnswer ? term.ua : term.la)}
+      </h2>
+      {(invert ? showAnswer : !showAnswer) && (
+        <p className="text-neutral-500 italic mb-4">{term.tr}</p>
+      )}
+      <button
+        onClick={() => setShowAnswer((s) => !s)}
+        className="mx-auto mb-4 block rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm hover:bg-neutral-100"
+      >
+        {showAnswer ? "Скрыть перевод" : "Показать перевод"}
+      </button>
+    </motion.div>
+  );
+}
+
+// 🚀 Главное приложение
+export default function AnatomyTermsApp() {
+  const { current, left, know, dontKnow, reset, total } = useQueue(TERMS);
+  const [invert, setInvert] = useState(true);
+
+  // ⌨️ Управление клавиатурой
+  useEffect(() => {
+    function handleKey(e) {
+      if (!current) return;
+      if (e.key === "ArrowRight") know();
+      if (e.key === "ArrowDown") dontKnow();
+      if (e.key === "ArrowUp") {
+        const btn = document.querySelector("button.mx-auto");
+        if (btn) btn.click();
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [current]);
+
+  if (!current) {
+    return (
+      <div className="text-center p-6">
+        <h1 className="text-3xl font-bold mb-4">🎉 Молодец!</h1>
+        <p className="mb-6">
+          Всего слов: {total}
+        </p>
+        <button
+          onClick={reset}
+          className="rounded-xl bg-green-500 px-6 py-3 text-white shadow hover:bg-green-600"
+        >
+          🔁 Начать снова
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-xl mx-auto text-center p-6">
+      <h1 className="text-2xl font-bold mb-4">Тренировка терминов</h1>
+      <p className="mb-6 text-neutral-600">
+        Українська ↔ Латинь. Отвечайте: знаете или не знаете.
+      </p>
+
+      <Flashcard term={current} invert={invert} />
+
+      <button
+        onClick={() => setInvert((i) => !i)}
+        className="mb-6 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm shadow-sm hover:shadow"
+      >
+        Поменять направление (сейчас: {invert ? "UA → LA" : "LA → UA"})
+      </button>
+
+      <div className="flex justify-center gap-4 mb-4">
+        <button
+          onClick={know}
+          className="rounded-xl bg-blue-500 px-6 py-3 text-white shadow hover:bg-blue-600"
+        >
+          Знаю
+        </button>
+        <button
+          onClick={dontKnow}
+          className="rounded-xl bg-red-500 px-6 py-3 text-white shadow hover:bg-red-600"
+        >
+          Не знаю
+        </button>
+      </div>
+
+      <p className="text-neutral-600">Осталось слов: {left} из {total}</p>
+    </div>
+  );
+}
